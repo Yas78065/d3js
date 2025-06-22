@@ -1,0 +1,116 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Electricity Access by Region - D3 Bar Chart</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <style>
+        body {
+            font-family: sans-serif;
+            margin: 40px;
+        }
+        .bar {
+            fill: steelblue;
+        }
+        .bar:hover {
+            fill: orange;
+        }
+        .axis-label {
+            font-size: 14px;
+        }
+        .tooltip {
+            position: absolute;
+            text-align: center;
+            padding: 5px;
+            background: lightgray;
+            border-radius: 4px;
+            pointer-events: none;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <h2>Electricity Access by Region (2023)</h2>
+    <svg width="800" height="500"></svg>
+
+    <script>
+        const margin = {top: 50, right: 30, bottom: 60, left: 60},
+              width = 800 - margin.left - margin.right,
+              height = 500 - margin.top - margin.bottom;
+
+        const svg = d3.select("svg")
+                      .append("g")
+                      .attr("transform", `translate(${margin.left},${margin.top})`);
+
+        // Tooltip
+        const tooltip = d3.select("body")
+                          .append("div")
+                          .attr("class", "tooltip")
+                          .style("opacity", 0);
+
+        d3.csv("uganda_electricity_access_2023.csv").then(data => {
+            data.forEach(d => {
+                d.Access_Percent = +d.Access_Percent;
+            });
+
+            const x = d3.scaleBand()
+                        .domain(data.map(d => d.Region))
+                        .range([0, width])
+                        .padding(0.2);
+
+            const y = d3.scaleLinear()
+                        .domain([0, 100])
+                        .range([height, 0]);
+
+            // X Axis
+            svg.append("g")
+               .attr("transform", `translate(0, ${height})`)
+               .call(d3.axisBottom(x))
+               .selectAll("text")
+               .attr("transform", "rotate(-25)")
+               .style("text-anchor", "end");
+
+            // Y Axis
+            svg.append("g")
+               .call(d3.axisLeft(y));
+
+            // Bars
+            svg.selectAll(".bar")
+               .data(data)
+               .enter()
+               .append("rect")
+               .attr("class", "bar")
+               .attr("x", d => x(d.Region))
+               .attr("y", d => y(d.Access_Percent))
+               .attr("width", x.bandwidth())
+               .attr("height", d => height - y(d.Access_Percent))
+               .on("mouseover", function(event, d) {
+                    tooltip.transition().duration(200).style("opacity", 0.9);
+                    tooltip.html(`${d.Region}<br>${d.Access_Percent}%`)
+                           .style("left", (event.pageX + 5) + "px")
+                           .style("top", (event.pageY - 28) + "px");
+               })
+               .on("mouseout", function() {
+                    tooltip.transition().duration(500).style("opacity", 0);
+               });
+
+            // Axis Labels
+            svg.append("text")
+               .attr("text-anchor", "end")
+               .attr("x", width / 2 + 40)
+               .attr("y", height + 50)
+               .attr("class", "axis-label")
+               .text("Region");
+
+            svg.append("text")
+               .attr("text-anchor", "end")
+               .attr("transform", "rotate(-90)")
+               .attr("y", -50)
+               .attr("x", -height / 2 + 20)
+               .attr("class", "axis-label")
+               .text("Electricity Access (%)");
+        });
+    </script>
+</body>
+</html>

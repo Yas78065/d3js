@@ -1,0 +1,127 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Urban vs Rural Electricity Access by Region</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <style>
+        body {
+            font-family: sans-serif;
+            margin: 40px;
+        }
+        .tooltip {
+            position: absolute;
+            text-align: center;
+            padding: 5px;
+            background: lightgray;
+            border-radius: 4px;
+            pointer-events: none;
+            font-size: 12px;
+        }
+        .bar {
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <h2>Urban vs Rural Electricity Access by Region (2023)</h2>
+    <svg width="900" height="500"></svg>
+
+    <script>
+        const margin = {top: 50, right: 30, bottom: 70, left: 60},
+              width = 900 - margin.left - margin.right,
+              height = 500 - margin.top - margin.bottom;
+
+        const svg = d3.select("svg")
+                      .append("g")
+                      .attr("transform", `translate(${margin.left},${margin.top})`);
+
+        const tooltip = d3.select("body")
+                          .append("div")
+                          .attr("class", "tooltip")
+                          .style("opacity", 0);
+
+        d3.csv("uganda_electricity_access_2023.csv").then(data => {
+            const subgroups = ["Urban_Percent", "Rural_Percent"];
+            const groups = data.map(d => d.Region);
+
+            // Format data
+            data.forEach(d => {
+                d.Urban_Percent = +d.Urban_Percent;
+                d.Rural_Percent = +d.Rural_Percent;
+            });
+
+            const x0 = d3.scaleBand()
+                         .domain(groups)
+                         .range([0, width])
+                         .padding(0.2);
+
+            const x1 = d3.scaleBand()
+                         .domain(subgroups)
+                         .range([0, x0.bandwidth()])
+                         .padding(0.05);
+
+            const y = d3.scaleLinear()
+                        .domain([0, 100])
+                        .range([height, 0]);
+
+            const color = d3.scaleOrdinal()
+                            .domain(subgroups)
+                            .range(["#1f77b4", "#ff7f0e"]);
+
+            svg.append("g")
+               .attr("transform", `translate(0, ${height})`)
+               .call(d3.axisBottom(x0))
+               .selectAll("text")
+               .attr("transform", "rotate(-25)")
+               .style("text-anchor", "end");
+
+            svg.append("g")
+               .call(d3.axisLeft(y));
+
+            svg.append("g")
+               .selectAll("g")
+               .data(data)
+               .enter()
+               .append("g")
+               .attr("transform", d => `translate(${x0(d.Region)},0)`)
+               .selectAll("rect")
+               .data(d => subgroups.map(key => ({key: key, value: d[key], region: d.Region})))
+               .enter()
+               .append("rect")
+               .attr("x", d => x1(d.key))
+               .attr("y", d => y(d.value))
+               .attr("width", x1.bandwidth())
+               .attr("height", d => height - y(d.value))
+               .attr("fill", d => color(d.key))
+               .attr("class", "bar")
+               .on("mouseover", function(event, d) {
+                    tooltip.transition().duration(200).style("opacity", 0.9);
+                    tooltip.html(`${d.region}<br>${d.key.replace('_Percent','')}: ${d.value}%`)
+                           .style("left", (event.pageX + 5) + "px")
+                           .style("top", (event.pageY - 28) + "px");
+               })
+               .on("mouseout", function() {
+                    tooltip.transition().duration(500).style("opacity", 0);
+               });
+
+            // Axis Labels
+            svg.append("text")
+               .attr("text-anchor", "end")
+               .attr("x", width / 2 + 40)
+               .attr("y", height + 60)
+               .attr("class", "axis-label")
+               .text("Region");
+
+            svg.append("text")
+               .attr("text-anchor", "end")
+               .attr("transform", "rotate(-90)")
+               .attr("y", -50)
+               .attr("x", -height / 2 + 20)
+               .attr("class", "axis-label")
+               .text("Electricity Access (%)");
+        });
+    </script>
+</body>
+</html>
